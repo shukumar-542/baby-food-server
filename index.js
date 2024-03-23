@@ -42,9 +42,24 @@ async function run() {
             res.json(result)
         })
 
-        
+        // get flash sale product
         app.get('/api/v1/flashSale', async (req, res) => {
             const result = await productCollection.find({ flashSale: true }).toArray()
+            res.json(result)
+        })
+
+        // Get to rated product
+        app.get('/api/v1/top-rating', async(req, res)=>{
+            const result = await productCollection.find().sort({rating: -1}).limit(6).toArray()
+            res.json(result)
+
+        })
+
+        // get product searching by Id
+        app.get('/api/v1/product/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await productCollection.findOne(query)
             res.json(result)
         })
 
