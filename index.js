@@ -1,8 +1,9 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
 const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 require('dotenv').config();
-// const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -24,6 +25,63 @@ async function run() {
 
         const db = client.db('baby-food');
         const productCollection = db.collection('products');
+        const userCollection = db.collection('users');
+
+
+        // User Registration
+        app.post('/api/v1/register', async (req, res) => {
+            const { name, email, password } = req.body;
+
+            // Check if email already exists
+            const existingUser = await userCollection.findOne({ email });
+            if (existingUser) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'User already exists'
+                });
+            }
+
+            // Hash the password
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Insert user into the database
+            await userCollection.insertOne({ name, email, password: hashedPassword });
+
+            res.status(201).json({
+                success: true,
+                message: 'User registered successfully'
+            });
+        });
+
+
+
+        // User Login
+        app.post('/api/v1/login', async (req, res) => {
+            const { email, password } = req.body;
+
+            // Find user by email
+            const user = await userCollection.findOne({ email });
+            if (!user) {
+                return res.status(401).json({ message: 'Invalid email or password' });
+            }
+
+            // Compare hashed password
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if (!isPasswordValid) {
+                return res.status(401).json({ message: 'Invalid email or password' });
+            }
+
+            // Generate JWT token
+            const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: process.env.EXPIRES_IN });
+
+            res.json({
+                success: true,
+                message: 'Login successful',
+                token
+            });
+        });
+
+
 
 
         // ----------inset data into database-------------
@@ -60,6 +118,30 @@ async function run() {
             const query = { _id: new ObjectId(id) }
             const result = await productCollection.findOne(query)
             res.json(result)
+        })
+
+        // delete product by ID
+        app.delete('/api/v1/product/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await productCollection.deleteOne(query)
+            res.json(result)
+        })
+
+        // update products 
+        // -----------update data form database-----------//
+        app.patch('/api/v1/product/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const updateProduct = req.body;
+            const products = {
+                $set: {
+                    ...updateProduct
+                }
+            }
+            const result = await productCollection.updateOne(query, products)
+            res.json(result)
+
         })
 
         // Get products by category
