@@ -26,6 +26,7 @@ async function run() {
         const db = client.db('baby-food');
         const productCollection = db.collection('products');
         const userCollection = db.collection('users');
+        const orderCollection = db.collection('order');
 
 
         // User Registration
@@ -45,7 +46,7 @@ async function run() {
             const hashedPassword = await bcrypt.hash(password, 10);
 
             // Insert user into the database
-            await userCollection.insertOne({ name, email, password: hashedPassword });
+            await userCollection.insertOne({ name, email, password: hashedPassword, role: 'user' });
 
             res.status(201).json({
                 success: true,
@@ -72,7 +73,7 @@ async function run() {
             }
 
             // Generate JWT token
-            const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: process.env.EXPIRES_IN });
+            const token = jwt.sign({ email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.EXPIRES_IN });
 
             res.json({
                 success: true,
@@ -87,10 +88,39 @@ async function run() {
         // ----------inset data into database-------------
         app.post('/api/v1/product', async (req, res) => {
             const body = req.body
-            const products = { 'creationTime': new Date(), ...body }
+            const products = { 'creationTime': new Date(), ...body, 'quantity': 0 }
             const result = await productCollection.insertOne(products);
             res.json(result)
         })
+
+
+
+        // create order collection
+        app.post('/api/v1/order', async (req, res) => {
+            const body = req.body
+            const product = { stats: 'pending', ...body }
+            const result = await orderCollection.insertOne(product)
+            res.json(result)
+        })
+
+
+        // Get all orders
+        app.get('/api/v1/order', async (req, res) => {
+            const result = await orderCollection.find().toArray();
+            res.json(result)
+        })
+
+        // update class status
+        app.patch('/api/v1/order/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: { stats: 'delivered' }
+            }
+            const result = await orderCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
+
 
 
         // Get all Products
