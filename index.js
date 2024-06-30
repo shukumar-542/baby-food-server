@@ -83,6 +83,33 @@ async function run() {
         });
 
 
+        // Update User information
+        app.patch('/api/v1/user/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const updateUser = req.body;
+            const user = {
+                $set: {
+                    ...updateUser
+                }
+            }
+            const result = await userCollection.updateOne(query, user)
+            res.json(result)
+
+        })
+
+
+        // Get user Information
+
+        app.get('/api/v1/userInfo/:email', async (req, res) => {
+            const email = req.params.email;
+            const result = await userCollection.findOne({ email: email })
+            res.json(result)
+
+        })
+
+
+
 
 
         // ----------inset data into database-------------
@@ -110,7 +137,7 @@ async function run() {
             res.json(result)
         })
 
-        // update class status
+        // Update order status
         app.patch('/api/v1/order/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
